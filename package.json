@@ -1,0 +1,16 @@
+{
+  "name": "authorizer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "adrin.mukherjee@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "crypto-hash": "^1.3.0",
+    "node-forge": "^0.10.0"
+  }
+}
