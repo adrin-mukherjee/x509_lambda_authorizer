@@ -10,7 +10,7 @@ The implementation extracts three certificate fields to generate a hash value us
 The generated hash value is used to identify the caller and is further looked up in a persistent store to fetch the list of API resources/methods that the caller is authorized to execute/access. This sample authorizer loads the API permissions file (JSON format) from Amazon S3 and then looks up the hash value in it.
 The API permissions file format considered is as below:
 
-*{\
+{\
 "\<hash-value\>": [\
  {\
  "api": "arn:aws:execute-api:\<region-code\>:\<aws-acct-id\>:\<api-id\>",\
@@ -30,7 +30,7 @@ The API permissions file format considered is as below:
 "\<hash-value\>":[\
 ...\
 ]\
-}\*
+}\
 
 
 This authorization scheme does NOT consider user context. It simply extends the transport layer authentication (based on X.509 certificates) and creates an authorization scheme.
