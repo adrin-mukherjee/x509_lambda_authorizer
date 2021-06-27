@@ -8,45 +8,13 @@
  * are fetched to generate an IAM policy. This policy is then returned to 
  * AWS API Gateway
  */
-const forge = require('node-forge')
+const AWS      = require('aws-sdk');
+const Config   = require('./config.js');
+const forge    = require('node-forge');
 const {sha256} = require('crypto-hash');
 
-// A lame implementation of a map of partners' hash values with list of permitted APIs
-/**
- * Partner1 can access specific resources of both 'customer' and 'products' APIs 
- * Partner2 can access specific resources of only 'products' API
- */
-const api_permissions = 
-    {
-        "<hash-value>": [   // partner1
-            {
-                api: "arn:aws:execute-api:<region-code>:<acct-id>:<api-id>",
-                resource: "customer/*",
-                stage: "DEV",
-                method: "GET",
-                effect: "Allow"
-            },
-            {
-                api: "arn:aws:execute-api:<region-code>:<acct-id>:<api-id>",
-                resource: "products*",
-                stage: "DEV",
-                method: "GET",
-                effect: "Allow"
-            }
-        ],
-        "<hash-value>":[  // partner2
-            {
-                api: "arn:aws:execute-api:<region-code>:<acct-id>:<api-id>",
-                resource: "products*",
-                stage: "DEV",
-                method: "GET",
-                effect: "Allow"
-            }
-        ]
-    };
-
 exports.handler = async (event)=>{
-    console.log("Incoming event = ", JSON.stringify(event));
+    console.log("Incoming event- ", JSON.stringify(event));
     
     // Check if the request context has a certificate
     if(event && event.requestContext.identity.clientCert){
@@ -55,26 +23,28 @@ exports.handler = async (event)=>{
         try{
             // Parse certificate and create a hashed identifier
             const cert = forge.pki.certificateFromPem(certPEMContent);
-
-            let iss   = cert.issuer.getField('CN').value.trim();
-            let sub   = cert.subject.getField('CN').value.trim();
-            let srlno = cert.serialNumber.trim();
+            let iss    = cert.issuer.getField('CN').value.trim();
+            let sub    = cert.subject.getField('CN').value.trim();
+            let srlno  = cert.serialNumber.trim();
 
             let identifier = iss + ':' + sub + ':' + srlno;
-            console.log("<Issuer CN>:<Subject CN>:<Certificate Serial No.> = ", identifier);    
+            console.log("<Issuer CN>:<Subject CN>:<Certificate Serial No.> - ", identifier);    
             
             const hash = await sha256(identifier);
-            console.log("Hash value = ", hash);
+            console.log("Hash value- ", hash);
 
-            /**
-             * TODO: Use some persistent store to lookup the partner's hash value in order 
-             * fetch the list of permitted APIs and corresponding resources and methods
-             */
-            let permissions = api_permissions[hash]; // Should be replaced by actual lookup to persistent store
-            if(permissions){
-                // Generate IAM policy based on the permissions
+            /** 
+             * TODO: In practice, we should make calls to a persistent store to fetch the 
+             * API mappings against the generated hash value   
+             */ 
+            
+            // Load entire api permissions file from S3   
+            const api_permissions = await get_api_permissions_from_S3();
+            let permissions = api_permissions[hash]; // get permissions for the specific partner
+
+            if(permissions && permissions instanceof Array){
                 let policy = generate_iam_policy(sub, permissions);
-                console.log("IAM Policy = ", JSON.stringify(policy));
+                console.log("IAM Policy- ", JSON.stringify(policy));
                 return policy;
             }
             else{
@@ -83,7 +53,7 @@ exports.handler = async (event)=>{
             }
         }
         catch(err){
-            console.error("Unable to parse certificate content");
+            console.error("Unable to authorize- ", err);
             return generate_deny_all_iam_policy();
         }
     }
@@ -92,6 +62,35 @@ exports.handler = async (event)=>{
         return generate_deny_all_iam_policy();
     }
 };
+
+async function get_api_permissions_from_S3(){
+    var api_permissions = {};
+    var S3 = new AWS.S3({region: Config.REGION});
+
+    var params = {
+        Bucket: Config.BUCKET_NAME, 
+        Key: Config.API_PERMISSION_FILE
+    };
+
+    try{    
+        let data = await S3.getObject(params).promise();
+        if(data && data.Body instanceof Buffer){
+            api_permissions = JSON.parse(data.Body.toString('utf-8'));
+            console.log("Loaded API Permission file- ", api_permissions);
+        }
+        else{
+            api_permissions = {};
+            console.error("Unable to read api permissions file");
+            // TODO: send SNS notification to concerned teams
+        }
+    }
+    catch(err){
+        console.error("Unable to retrieve api permissions- ", err);
+        // TODO: send SNS notification to concerned teams
+        api_permissions = {};
+    }
+    return api_permissions;
+}
 
 function generate_iam_policy(principal, permissions){
     let response = {};
