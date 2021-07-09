@@ -30,7 +30,7 @@ The API permissions file format considered is as below:
 "\<hash-value\>":[\
 ...\
 ]\
-}\
+}
 
 
 This authorization scheme does NOT consider user context. It simply extends the transport layer authentication (based on X.509 certificates) and creates an authorization scheme.
@@ -39,6 +39,6 @@ For example: If we want to give access to a set of API resources/methods to a pa
 
 
 > For a detailed explanation around how to use this authorizer and associated caveats, visit:
-> https://medium.com/@adrin-mukherjee/easy-api-authorization-with-aws-api-gateway-and-mutual-tls-db05261d5a9e
+> https://adrin-mukherjee.medium.com/x-509-certificate-based-authorization-for-rest-apis-db05261d5a9e
 
 
