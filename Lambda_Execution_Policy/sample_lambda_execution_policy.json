@@ -1,0 +1,26 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "logs:CreateLogGroup"
+            ],
+            "Resource": [
+                "arn:aws:logs:<region-code>:<aws-acct-id>:*",
+                "arn:aws:s3:::api-permission-store/api_permission.json"
+            ]
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:<region-code>:<aws-acct-id>:log-group:/aws/lambda/x509_lambda_authorizer:*"
+        }
+    ]
+}
